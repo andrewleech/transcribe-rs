@@ -17,12 +17,13 @@ sense_voice = ["dep:ort", "dep:ndarray", "dep:rustfft", "dep:base64"]
 whisperfile = ["dep:ureq"]
 resampling = ["dep:rubato"]
 nemotron-streaming = ["dep:parakeet-rs", "resampling"]
+qwen3-streaming = ["dep:ort", "dep:ndarray", "dep:rustfft"]
 
 # Remote engines
 openai = ["dep:async-openai", "dep:tokio", "dep:async-trait"]
 
 # Convenience
-all = ["whisper", "parakeet", "moonshine", "sense_voice", "whisperfile", "openai", "nemotron-streaming", "resampling"]
+all = ["whisper", "parakeet", "moonshine", "sense_voice", "whisperfile", "openai", "nemotron-streaming", "qwen3-streaming", "resampling"]
 
 [dependencies]
 # Always required
@@ -127,3 +128,11 @@ required-features = ["openai"]
 [[test]]
 name = "nemotron_streaming"
 required-features = ["nemotron-streaming"]
+
+[[example]]
+name = "qwen3_streaming"
+required-features = ["qwen3-streaming"]
+
+[[test]]
+name = "qwen3_streaming"
+required-features = ["qwen3-streaming"]

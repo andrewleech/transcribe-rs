@@ -26,6 +26,8 @@ pub mod moonshine;
 pub mod nemotron_streaming;
 #[cfg(feature = "parakeet")]
 pub mod parakeet;
+#[cfg(feature = "qwen3-streaming")]
+pub mod qwen3_streaming;
 #[cfg(feature = "sense_voice")]
 pub mod sense_voice;
 #[cfg(feature = "whisper")]
