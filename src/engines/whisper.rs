@@ -210,10 +210,8 @@ impl TranscriptionEngine for WhisperEngine {
     ) -> Result<(), Box<dyn std::error::Error>> {
         let mut context_params = WhisperContextParameters::default();
         context_params.use_gpu = params.use_gpu;
-        let context = WhisperContext::new_with_params(
-            model_path.to_str().unwrap(),
-            context_params,
-        )?;
+        let context =
+            WhisperContext::new_with_params(model_path.to_str().unwrap(), context_params)?;
 
         let state = context.create_state()?;
 

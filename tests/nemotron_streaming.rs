@@ -85,7 +85,10 @@ fn test_reset_clears_state() {
     }
 
     let before_reset = engine.get_transcript();
-    assert!(!before_reset.is_empty(), "Should have transcript before reset");
+    assert!(
+        !before_reset.is_empty(),
+        "Should have transcript before reset"
+    );
 
     engine.reset();
     let after_reset = engine.get_transcript();
@@ -137,7 +140,8 @@ fn test_push_samples_returns_incremental_text() {
     let full_transcript = engine.get_transcript();
 
     assert_eq!(
-        concatenated.trim(), full_transcript.trim(),
+        concatenated.trim(),
+        full_transcript.trim(),
         "Concatenated incremental text should match get_transcript()"
     );
 }

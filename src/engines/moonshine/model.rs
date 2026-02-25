@@ -73,10 +73,16 @@ impl MoonshineModel {
         log::info!("Loading Moonshine decoder from {:?}...", decoder_path);
         let decoder = Self::init_session(&decoder_path)?;
 
-        let encoder_input_names: Vec<String> =
-            encoder.inputs().iter().map(|i| i.name().to_string()).collect();
-        let decoder_input_names: Vec<String> =
-            decoder.inputs().iter().map(|i| i.name().to_string()).collect();
+        let encoder_input_names: Vec<String> = encoder
+            .inputs()
+            .iter()
+            .map(|i| i.name().to_string())
+            .collect();
+        let decoder_input_names: Vec<String> = decoder
+            .inputs()
+            .iter()
+            .map(|i| i.name().to_string())
+            .collect();
 
         log::debug!("Encoder inputs: {:?}", encoder_input_names);
         log::debug!("Decoder inputs: {:?}", decoder_input_names);
@@ -103,7 +109,11 @@ impl MoonshineModel {
             .commit_from_file(path)?;
 
         for input in session.inputs() {
-            log::info!("Model input: name={}, type={:?}", input.name(), input.dtype());
+            log::info!(
+                "Model input: name={}, type={:?}",
+                input.name(),
+                input.dtype()
+            );
         }
 
         Ok(session)

@@ -95,7 +95,11 @@ impl SenseVoiceModel {
         log::info!("Loading SenseVoice model from {:?}...", model_path);
         let session = Self::init_session(&model_path)?;
 
-        let input_names: Vec<String> = session.inputs().iter().map(|i| i.name().to_string()).collect();
+        let input_names: Vec<String> = session
+            .inputs()
+            .iter()
+            .map(|i| i.name().to_string())
+            .collect();
         log::debug!("Model inputs: {:?}", input_names);
 
         let metadata = Self::parse_metadata(&session)?;
@@ -131,10 +135,18 @@ impl SenseVoiceModel {
             .commit_from_file(path)?;
 
         for input in session.inputs() {
-            log::info!("Model input: name={}, type={:?}", input.name(), input.dtype());
+            log::info!(
+                "Model input: name={}, type={:?}",
+                input.name(),
+                input.dtype()
+            );
         }
         for output in session.outputs() {
-            log::info!("Model output: name={}, type={:?}", output.name(), output.dtype());
+            log::info!(
+                "Model output: name={}, type={:?}",
+                output.name(),
+                output.dtype()
+            );
         }
 
         Ok(session)

@@ -251,8 +251,16 @@ mod tests {
         let stereo = vec![0.2, 0.8, -0.4, 0.6];
         let result = mix_to_mono(&stereo, 2);
         assert_eq!(result.len(), 2);
-        assert!((result[0] - 0.5).abs() < 1e-6, "Expected 0.5, got {}", result[0]);
-        assert!((result[1] - 0.1).abs() < 1e-6, "Expected 0.1, got {}", result[1]);
+        assert!(
+            (result[0] - 0.5).abs() < 1e-6,
+            "Expected 0.5, got {}",
+            result[0]
+        );
+        assert!(
+            (result[1] - 0.1).abs() < 1e-6,
+            "Expected 0.1, got {}",
+            result[1]
+        );
     }
 
     #[test]
@@ -275,7 +283,11 @@ mod tests {
         // 5 samples with 2 channels: last sample is trailing and should be dropped
         let samples = vec![0.2, 0.8, -0.4, 0.6, 0.9];
         let result = mix_to_mono(&samples, 2);
-        assert_eq!(result.len(), 2, "Trailing sample should be dropped by chunks_exact");
+        assert_eq!(
+            result.len(),
+            2,
+            "Trailing sample should be dropped by chunks_exact"
+        );
         assert!((result[0] - 0.5).abs() < 1e-6);
         assert!((result[1] - 0.1).abs() < 1e-6);
     }
@@ -330,7 +342,10 @@ mod resampling_tests {
         // Input smaller than RESAMPLE_CHUNK_SIZE (1024)
         let input: Vec<f32> = vec![0.0; 500];
         let output = resample_chunk(&mut resampler, &input);
-        assert!(output.is_ok(), "Should handle sub-chunk input without error");
+        assert!(
+            output.is_ok(),
+            "Should handle sub-chunk input without error"
+        );
         assert!(!output.unwrap().is_empty(), "Should produce some output");
     }
 
@@ -355,4 +370,3 @@ mod resampling_tests {
         assert!(output.is_empty(), "Empty input should produce empty output");
     }
 }
-
