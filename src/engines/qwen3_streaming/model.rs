@@ -184,7 +184,11 @@ impl Qwen3AsrModel {
 
     /// Build input embeddings: embed all prompt tokens, then replace audio_pad
     /// positions with encoder output features.
-    fn build_input_embeds(&self, prompt_ids: &[i64], audio_features: &Array3<f32>) -> Array3<f32> {
+    fn build_input_embeds(
+        &self,
+        prompt_ids: &[i64],
+        audio_features: &Array3<f32>,
+    ) -> Result<Array3<f32>, Box<dyn std::error::Error>> {
         let hidden_size = self.config.decoder.hidden_size;
         let seq_len = prompt_ids.len();
 
@@ -199,7 +203,7 @@ impl Qwen3AsrModel {
 
         // Replace audio_pad positions with encoder output
         let (audio_start, audio_end) =
-            get_audio_pad_range(prompt_ids, self.config.special_tokens.audio_pad_token_id);
+            get_audio_pad_range(prompt_ids, self.config.special_tokens.audio_pad_token_id)?;
         let audio_len = audio_end - audio_start;
         for i in 0..audio_len {
             embeds
@@ -208,9 +212,7 @@ impl Qwen3AsrModel {
         }
 
         // Reshape to [1, seq_len, hidden_size]
-        embeds
-            .into_shape_with_order((1, seq_len, hidden_size))
-            .unwrap()
+        Ok(embeds.into_shape_with_order((1, seq_len, hidden_size))?)
     }
 
     /// Run greedy decoding on audio features, returning decoded text.
@@ -221,7 +223,7 @@ impl Qwen3AsrModel {
     ) -> Result<String, Box<dyn std::error::Error>> {
         let audio_token_count = audio_features.shape()[1];
         let prompt_ids = build_prompt_ids(&self.config.special_tokens, audio_token_count);
-        let input_embeds = self.build_input_embeds(&prompt_ids, audio_features);
+        let input_embeds = self.build_input_embeds(&prompt_ids, audio_features)?;
         let seq_len = prompt_ids.len();
 
         // Position IDs: [1, seq_len]
@@ -341,6 +343,10 @@ impl Qwen3AsrModel {
             mel_frames,
             audio_tokens
         );
+
+        if audio_tokens == 0 {
+            return Ok(String::new());
+        }
 
         let audio_features = self.encode(&mel)?;
         log::debug!("Audio features shape: {:?}", audio_features.shape());

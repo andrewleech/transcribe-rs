@@ -14,6 +14,9 @@ use crate::{split_at_sentence_boundaries, StreamingSegment, StreamingTranscripti
 use super::model::{Qwen3AsrModel, Qwen3ModelOptions};
 
 /// Default number of new samples before triggering a re-decode (3 seconds at 16kHz).
+///
+/// The confirm-before-emit strategy requires two consecutive decode passes to agree,
+/// so first emitted text typically appears after ~2× this interval.
 const DEFAULT_MIN_NEW_SAMPLES: usize = 48000;
 
 /// Parameters for loading a Qwen3-ASR streaming model.
@@ -40,6 +43,10 @@ pub enum Qwen3StreamingError {
 /// Audio is buffered and periodically re-run through the full encoder→decoder
 /// pipeline. Text that appears consistently across consecutive decode passes
 /// is emitted as confirmed output.
+///
+/// **Latency:** The confirm-before-emit strategy requires two consecutive decode
+/// passes to produce a stable prefix, so the minimum latency to first emitted
+/// text is approximately `2 × min_new_samples / sample_rate` (default: ~6 seconds).
 pub struct Qwen3StreamingEngine {
     model: Option<Qwen3AsrModel>,
     loaded_model_path: Option<PathBuf>,
@@ -48,8 +55,8 @@ pub struct Qwen3StreamingEngine {
 
 struct StreamingState {
     audio_buffer: Vec<f32>,
-    /// The most recent full decode result.
-    committed_transcript: String,
+    /// Most recent full decode result (includes speculative text not yet emitted).
+    latest_transcript: String,
     /// The previous decode result (for confirm-before-emit).
     previous_transcript: String,
     /// Text already returned via push_samples.
@@ -64,7 +71,7 @@ impl StreamingState {
     fn new(min_new_samples: usize) -> Self {
         Self {
             audio_buffer: Vec::new(),
-            committed_transcript: String::new(),
+            latest_transcript: String::new(),
             previous_transcript: String::new(),
             emitted_text: String::new(),
             last_decode_len: 0,
@@ -74,7 +81,7 @@ impl StreamingState {
 
     fn reset(&mut self) {
         self.audio_buffer.clear();
-        self.committed_transcript.clear();
+        self.latest_transcript.clear();
         self.previous_transcript.clear();
         self.emitted_text.clear();
         self.last_decode_len = 0;
@@ -183,7 +190,7 @@ impl StreamingTranscriptionEngine for Qwen3StreamingEngine {
 
         // Update state
         self.state.previous_transcript =
-            std::mem::replace(&mut self.state.committed_transcript, new_transcript);
+            std::mem::replace(&mut self.state.latest_transcript, new_transcript);
 
         if new_to_emit.is_empty() {
             return Ok(vec![]);
@@ -194,7 +201,7 @@ impl StreamingTranscriptionEngine for Qwen3StreamingEngine {
     }
 
     fn get_transcript(&self) -> String {
-        self.state.committed_transcript.clone()
+        self.state.latest_transcript.clone()
     }
 
     fn reset(&mut self) {
@@ -231,7 +238,7 @@ mod tests {
     #[test]
     fn test_reset_clears_state() {
         let mut engine = Qwen3StreamingEngine::new();
-        engine.state.committed_transcript = "hello".to_string();
+        engine.state.latest_transcript = "hello".to_string();
         engine.state.emitted_text = "hello".to_string();
         engine.state.audio_buffer = vec![0.0; 1000];
         engine.reset();

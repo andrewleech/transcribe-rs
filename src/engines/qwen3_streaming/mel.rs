@@ -10,6 +10,7 @@
 use ndarray::Array3;
 use rustfft::{num_complex::Complex, FftPlanner};
 use std::f64::consts::PI;
+use std::sync::LazyLock;
 
 const SAMPLE_RATE: f64 = 16000.0;
 const N_FFT: usize = 400;
@@ -18,15 +19,20 @@ const N_MELS: usize = 128;
 const FMIN: f64 = 0.0;
 const FMAX: f64 = 8000.0;
 
+/// Cached Hann window (400 f64 values) — deterministic, computed once.
+static HANN_WINDOW: LazyLock<Vec<f64>> = LazyLock::new(|| hann_window(N_FFT));
+
+/// Cached Slaney mel filterbank (128×201 f64 matrix) — deterministic, computed once.
+static MEL_FILTERS: LazyLock<Vec<Vec<f64>>> =
+    LazyLock::new(|| slaney_mel_filterbank(SAMPLE_RATE, N_FFT, N_MELS, FMIN, FMAX));
+
 /// Compute Whisper-compatible log-mel spectrogram.
 ///
 /// Input: 1-D f32 audio samples at 16kHz.
 /// Output: `Array3<f32>` shape `[1, 128, T]`.
 pub fn log_mel_spectrogram(audio: &[f32]) -> Array3<f32> {
-    let mel_filters = slaney_mel_filterbank(SAMPLE_RATE, N_FFT, N_MELS, FMIN, FMAX);
-
-    // STFT with Hann window
-    let window = hann_window(N_FFT);
+    let mel_filters = &*MEL_FILTERS;
+    let window = &*HANN_WINDOW;
     let num_fft_bins = N_FFT / 2 + 1;
 
     // Number of STFT frames (torch.stft default: centered, pad_mode reflect not needed

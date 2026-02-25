@@ -44,7 +44,10 @@ pub fn build_prompt_ids(special_tokens: &SpecialTokens, audio_token_count: usize
     ids.push(special_tokens.audio_start_token_id);
 
     // Audio pad tokens — replaced by encoder output embeddings at runtime
-    ids.extend(std::iter::repeat_n(special_tokens.audio_pad_token_id, audio_token_count));
+    ids.extend(std::iter::repeat_n(
+        special_tokens.audio_pad_token_id,
+        audio_token_count,
+    ));
 
     ids.push(special_tokens.audio_end_token_id);
     ids.push(special_tokens.im_end_token_id);
@@ -59,17 +62,20 @@ pub fn build_prompt_ids(special_tokens: &SpecialTokens, audio_token_count: usize
 }
 
 /// Find the `[start, end)` range of `audio_pad` token positions in the prompt.
-pub fn get_audio_pad_range(prompt_ids: &[i64], audio_pad_token_id: i64) -> (usize, usize) {
+pub fn get_audio_pad_range(
+    prompt_ids: &[i64],
+    audio_pad_token_id: i64,
+) -> Result<(usize, usize), String> {
     let start = prompt_ids
         .iter()
         .position(|&id| id == audio_pad_token_id)
-        .expect("No audio_pad tokens in prompt");
+        .ok_or_else(|| "No audio_pad tokens in prompt".to_string())?;
     let end = prompt_ids
         .iter()
         .rposition(|&id| id == audio_pad_token_id)
-        .unwrap()
+        .ok_or_else(|| "No audio_pad tokens in prompt".to_string())?
         + 1;
-    (start, end)
+    Ok((start, end))
 }
 
 #[cfg(test)]
@@ -137,7 +143,7 @@ mod tests {
     fn test_audio_pad_range() {
         let st = test_special_tokens();
         let ids = build_prompt_ids(&st, 10);
-        let (start, end) = get_audio_pad_range(&ids, st.audio_pad_token_id);
+        let (start, end) = get_audio_pad_range(&ids, st.audio_pad_token_id).unwrap();
         assert_eq!(start, 9);
         assert_eq!(end, 19);
         assert_eq!(end - start, 10);
