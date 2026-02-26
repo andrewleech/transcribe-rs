@@ -138,6 +138,10 @@ required-features = ["nemotron-streaming"]
 name = "qwen3_streaming"
 required-features = ["qwen3-streaming"]
 
+[[example]]
+name = "diagnose_directml"
+required-features = ["qwen3-streaming", "directml"]
+
 [[test]]
 name = "qwen3_streaming"
 required-features = ["qwen3-streaming"]

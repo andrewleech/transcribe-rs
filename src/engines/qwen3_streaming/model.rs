@@ -57,20 +57,32 @@ impl Qwen3AsrModel {
         let decoder_step_path =
             Self::find_model_file(model_dir, "decoder_step", options.quantized)?;
 
-        log::info!("Loading Qwen3-ASR encoder from {:?}", encoder_path);
-        let encoder = Self::init_session(&encoder_path)?;
+        // Encoder runs on CPU — DirectML's Conv2d kernel produces NaN for this
+        // model's Conv stem.  The encoder is small relative to the decoder so
+        // the performance impact is minimal.
+        log::info!("Loading Qwen3-ASR encoder from {:?} (CPU)", encoder_path);
+        let encoder = Self::init_session(
+            &encoder_path,
+            crate::ort_providers::cpu_execution_providers(),
+        )?;
 
         log::info!(
             "Loading Qwen3-ASR decoder_init from {:?}",
             decoder_init_path
         );
-        let decoder_init = Self::init_session(&decoder_init_path)?;
+        let decoder_init = Self::init_session(
+            &decoder_init_path,
+            crate::ort_providers::execution_providers(),
+        )?;
 
         log::info!(
             "Loading Qwen3-ASR decoder_step from {:?}",
             decoder_step_path
         );
-        let decoder_step = Self::init_session(&decoder_step_path)?;
+        let decoder_step = Self::init_session(
+            &decoder_step_path,
+            crate::ort_providers::execution_providers(),
+        )?;
 
         // Load embedding matrix from raw binary
         let embed_path = model_dir.join("embed_tokens.bin");
@@ -119,8 +131,10 @@ impl Qwen3AsrModel {
         }
     }
 
-    fn init_session(path: &Path) -> Result<Session, Qwen3Error> {
-        let providers = crate::ort_providers::execution_providers();
+    fn init_session(
+        path: &Path,
+        providers: Vec<ort::execution_providers::ExecutionProviderDispatch>,
+    ) -> Result<Session, Qwen3Error> {
         let session = Session::builder()?
             .with_optimization_level(GraphOptimizationLevel::Level3)?
             .with_execution_providers(providers)?

@@ -39,11 +39,11 @@
 //! # Ok::<(), Box<dyn std::error::Error>>(())
 //! ```
 
-mod config;
+pub mod config;
 mod engine;
-mod mel;
+pub mod mel;
 mod model;
-mod prompt;
+pub mod prompt;
 mod tokenizer;
 
 pub use engine::{Qwen3StreamingEngine, Qwen3StreamingModelParams};

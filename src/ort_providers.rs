@@ -27,3 +27,11 @@ pub fn execution_providers() -> Vec<ExecutionProviderDispatch> {
     providers.push(CPUExecutionProvider::default().build());
     providers
 }
+
+/// Return CPU-only execution providers.
+///
+/// Use this for models that contain operators with known GPU EP bugs
+/// (e.g. Conv2d on DirectML producing NaN).
+pub fn cpu_execution_providers() -> Vec<ExecutionProviderDispatch> {
+    vec![CPUExecutionProvider::default().build()]
+}
