@@ -1,7 +1,6 @@
 //! Core ONNX inference for Qwen3-ASR: encoder, decoder prefill, and autoregressive decode.
 
 use ndarray::{Array2, Array3, ArrayD, IxDyn};
-use ort::execution_providers::CPUExecutionProvider;
 use ort::session::builder::GraphOptimizationLevel;
 use ort::session::Session;
 use ort::value::TensorRef;
@@ -121,7 +120,7 @@ impl Qwen3AsrModel {
     }
 
     fn init_session(path: &Path) -> Result<Session, Qwen3Error> {
-        let providers = vec![CPUExecutionProvider::default().build()];
+        let providers = crate::ort_providers::execution_providers();
         let session = Session::builder()?
             .with_optimization_level(GraphOptimizationLevel::Level3)?
             .with_execution_providers(providers)?

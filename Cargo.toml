@@ -22,6 +22,11 @@ qwen3-streaming = ["dep:ort", "dep:ndarray", "dep:rustfft"]
 # Remote engines
 openai = ["dep:async-openai", "dep:tokio", "dep:async-trait"]
 
+# GPU execution providers (pass-through to ort)
+cuda = ["dep:ort", "ort/cuda"]
+directml = ["dep:ort", "ort/directml"]
+coreml = ["dep:ort", "ort/coreml"]
+
 # Convenience
 all = ["whisper", "parakeet", "moonshine", "sense_voice", "whisperfile", "openai", "nemotron-streaming", "qwen3-streaming", "resampling"]
 

@@ -55,6 +55,14 @@
 pub mod audio;
 pub mod engines;
 
+#[cfg(any(
+    feature = "parakeet",
+    feature = "moonshine",
+    feature = "sense_voice",
+    feature = "qwen3-streaming",
+))]
+pub mod ort_providers;
+
 #[cfg(feature = "openai")]
 pub mod remote;
 #[cfg(feature = "openai")]
