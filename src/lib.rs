@@ -63,6 +63,14 @@ pub mod engines;
 ))]
 pub mod ort_providers;
 
+#[cfg(any(
+    feature = "parakeet",
+    feature = "moonshine",
+    feature = "sense_voice",
+    feature = "qwen3-streaming",
+))]
+pub use ort_providers::{available_providers, get_gpu_provider, set_gpu_provider, GpuProvider};
+
 #[cfg(feature = "openai")]
 pub mod remote;
 #[cfg(feature = "openai")]

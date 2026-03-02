@@ -26,6 +26,7 @@ openai = ["dep:async-openai", "dep:tokio", "dep:async-trait"]
 cuda = ["dep:ort", "ort/cuda"]
 directml = ["dep:ort", "ort/directml"]
 coreml = ["dep:ort", "ort/coreml"]
+webgpu = ["dep:ort", "ort/webgpu"]
 
 # Convenience
 all = ["whisper", "parakeet", "moonshine", "sense_voice", "whisperfile", "openai", "nemotron-streaming", "qwen3-streaming", "resampling"]
@@ -140,7 +141,7 @@ required-features = ["qwen3-streaming"]
 
 [[example]]
 name = "diagnose_directml"
-required-features = ["qwen3-streaming", "directml"]
+required-features = ["qwen3-streaming"]
 
 [[test]]
 name = "qwen3_streaming"
