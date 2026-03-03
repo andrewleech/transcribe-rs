@@ -1,12 +1,12 @@
 # transcribe-rs
 
-A Rust library for audio transcription supporting multiple engines including Whisper, Parakeet, Moonshine, and SenseVoice.
+A Rust library for audio transcription supporting multiple engines including Whisper, Parakeet, Moonshine, SenseVoice, and Qwen3-ASR.
 
 This library was extracted from the [Handy](https://github.com/cjpais/handy) project to help other developers integrate transcription capabilities into their applications. We hope to support additional ASR models in the future and may expand to include features like microphone input and real-time transcription.
 
 ## Features
 
-- **Multiple Transcription Engines**: Support for Whisper, Whisperfile, Parakeet, Moonshine, and SenseVoice models
+- **Multiple Transcription Engines**: Support for Whisper, Whisperfile, Parakeet, Moonshine, SenseVoice, and Qwen3-ASR models
 - **Cross-platform**: Works on macOS, Windows, and Linux with optimized backends
 - **Hardware Acceleration**: Metal on macOS, Vulkan on Windows/Linux
 - **Flexible API**: Common interface for different transcription engines
@@ -36,6 +36,8 @@ transcribe-rs = { version = "0.1.5", features = ["all"] }
 | `sense_voice` | FunASR SenseVoice (ONNX) | ort, ndarray, rustfft, base64 |
 | `whisperfile` | Mozilla whisperfile server wrapper | reqwest |
 | `nemotron-streaming` | NVIDIA Nemotron streaming (ONNX) | parakeet-rs, rubato |
+| `qwen3` | Qwen3-ASR batch transcription (ONNX) | ort, ndarray, rustfft |
+| `qwen3-streaming` | Qwen3-ASR streaming adapter | qwen3 |
 | `resampling` | Audio resampling utilities | rubato |
 | `openai` | OpenAI API (remote) | async-openai, tokio |
 | `all` | All engines enabled | All of the above |
@@ -113,6 +115,19 @@ models/nemotron-speech-streaming-en-0.6b/
 
 Nemotron streaming models are available from [HuggingFace](https://huggingface.co/lokkju/nemotron-speech-streaming-en-0.6b-int8).
 
+**Qwen3-ASR Model Directory Structure:**
+```
+models/qwen3-asr-0.6b/
+├── encoder.onnx               # Audio encoder (+ .data)
+├── decoder_init.onnx          # Decoder prefill (+ .data)
+├── decoder_step.onnx          # Decoder autoregressive step (+ .data)
+├── embed_tokens.bin           # Embedding matrix (raw f32)
+├── config.json                # Model configuration
+└── tokenizer.json             # HuggingFace BPE tokenizer
+```
+
+Available model sizes: 0.6B and 1.7B. Both batch (`qwen3`) and streaming (`qwen3-streaming`) features use the same model files.
+
 **Audio Requirements:**
 - Format: WAV
 - Sample Rate: 16 kHz
@@ -187,6 +202,27 @@ engine.load_model_with_params(
 )?;
 let result = engine.transcribe_file(&PathBuf::from("audio.wav"), None)?;
 println!("{}", result.text);
+```
+
+### Qwen3-ASR Streaming Engine
+```rust
+use transcribe_rs::{StreamingTranscriptionEngine, engines::qwen3_streaming::Qwen3StreamingEngine};
+use std::path::PathBuf;
+
+let mut engine = Qwen3StreamingEngine::new();
+engine.load_model(&PathBuf::from("models/qwen3-asr-0.6b"))?;
+
+// Feed audio in chunks
+for chunk in samples.chunks(1600) {
+    let segments = engine.push_samples(chunk)?;
+    for seg in &segments {
+        print!("{}", seg.text);
+        if seg.is_endpoint {
+            println!();
+        }
+    }
+}
+let transcript = engine.get_transcript();
 ```
 
 ### Nemotron Streaming Engine
@@ -294,6 +330,9 @@ cargo run --example moonshine --features moonshine
 # Run SenseVoice example (add --int8 for quantized model)
 cargo run --example sense_voice --features sense_voice -- --int8 models/sense-voice-int8 samples/audio.wav
 
+# Run Qwen3-ASR streaming example
+cargo run --example qwen3_streaming --features qwen3-streaming -- models/qwen3-asr-0.6b samples/jfk.wav
+
 # Run Nemotron streaming example
 cargo run --example nemotron_streaming --features nemotron-streaming
 
@@ -321,6 +360,7 @@ cargo test --features moonshine
 cargo test --features sense_voice
 cargo test --features whisperfile
 cargo test --features nemotron-streaming
+cargo test --features qwen3-streaming
 cargo test --features openai
 
 # Test multiple engines

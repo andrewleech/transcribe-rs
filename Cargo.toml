@@ -15,6 +15,8 @@ parakeet = ["dep:ort", "dep:ndarray", "dep:regex", "dep:once_cell"]
 moonshine = ["dep:ort", "dep:ndarray"]
 sense_voice = ["dep:ort", "dep:ndarray", "dep:rustfft", "dep:base64"]
 whisperfile = ["dep:ureq"]
+qwen3 = ["dep:ort", "dep:ndarray", "dep:rustfft"]
+qwen3-streaming = ["qwen3"]
 resampling = ["dep:rubato"]
 nemotron-streaming = ["dep:parakeet-rs", "resampling"]
 
@@ -22,7 +24,7 @@ nemotron-streaming = ["dep:parakeet-rs", "resampling"]
 openai = ["dep:async-openai", "dep:tokio", "dep:async-trait"]
 
 # Convenience
-all = ["whisper", "parakeet", "moonshine", "sense_voice", "whisperfile", "openai", "nemotron-streaming", "resampling"]
+all = ["whisper", "parakeet", "moonshine", "sense_voice", "whisperfile", "openai", "nemotron-streaming", "qwen3", "qwen3-streaming", "resampling"]
 
 [dependencies]
 # Always required
@@ -96,6 +98,10 @@ required-features = ["nemotron-streaming"]
 name = "openai"
 required-features = ["openai"]
 
+[[example]]
+name = "qwen3_streaming"
+required-features = ["qwen3-streaming"]
+
 [dev-dependencies]
 once_cell = "1.21.3"
 
@@ -127,3 +133,7 @@ required-features = ["openai"]
 [[test]]
 name = "nemotron_streaming"
 required-features = ["nemotron-streaming"]
+
+[[test]]
+name = "qwen3_streaming"
+required-features = ["qwen3-streaming"]
