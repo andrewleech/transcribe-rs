@@ -36,6 +36,7 @@ transcribe-rs = { version = "0.1.5", features = ["all"] }
 | `sense_voice` | FunASR SenseVoice (ONNX) | ort, ndarray, rustfft, base64 |
 | `gigaam` | SberDevices GigaAM v3 (ONNX) | ort, ndarray, rustfft |
 | `whisperfile` | Mozilla whisperfile server wrapper | reqwest |
+| `qwen3` | Alibaba Qwen3-ASR (ONNX) | ort, ndarray, rustfft |
 | `openai` | OpenAI API (remote) | async-openai, tokio |
 | `all` | All engines enabled | All of the above |
 
@@ -105,6 +106,19 @@ SenseVoice models are available from [sherpa-onnx](https://github.com/k2-fsa/she
 **GigaAM Model:**
 - Single ONNX file (e.g., `v3_e2e_ctc.int8.onnx`)
 - BPE vocabulary is embedded in the engine, no external tokens file needed
+
+**Qwen3-ASR Model Directory Structure:**
+```
+models/qwen3-asr-0.6b/
+├── encoder.onnx          # Audio encoder (+ .data weight file)
+├── decoder_init.onnx     # Decoder prefill (+ .data weight file)
+├── decoder_step.onnx     # Decoder autoregressive step (+ .data weight file)
+├── embed_tokens.bin      # Embedding matrix (raw f32)
+├── config.json           # Model configuration
+└── tokenizer.json        # HuggingFace BPE tokenizer
+```
+
+Pre-exported ONNX models: [qwen3-asr-0.6b-onnx](https://huggingface.co/andrewleech/qwen3-asr-0.6b-onnx), [qwen3-asr-1.7b-onnx](https://huggingface.co/andrewleech/qwen3-asr-1.7b-onnx). Export scripts: [qwen3-asr-onnx](https://github.com/andrewleech/qwen3-asr-onnx).
 
 **Audio Requirements:**
 - Format: WAV
