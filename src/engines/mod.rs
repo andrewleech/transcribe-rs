@@ -32,3 +32,8 @@ pub mod sense_voice;
 pub mod whisper;
 #[cfg(feature = "whisperfile")]
 pub mod whisperfile;
+
+#[cfg(any(feature = "qwen3", feature = "qwen3-streaming"))]
+pub mod qwen3;
+#[cfg(feature = "qwen3-streaming")]
+pub mod qwen3_streaming;
