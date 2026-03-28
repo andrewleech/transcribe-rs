@@ -11,7 +11,8 @@
 //! - **Timestamped Results**: Detailed timing information for transcribed segments
 //! - **Unified API**: `SpeechModel` trait for all local engines
 //! - **Hardware Acceleration**: GPU support for ORT engines (`ort-cuda`, `ort-rocm`,
-//!   `ort-directml`) and whisper.cpp (Metal/Vulkan) via the [`accel`] module
+//!   `ort-directml`, `ort-coreml`, `ort-webgpu`) and whisper.cpp (Metal/Vulkan)
+//!   via the [`accel`] module
 //!
 //! ## Backend Categories
 //!
@@ -89,8 +90,9 @@ pub mod accel;
 pub mod audio;
 pub mod error;
 pub use accel::{
-    get_ort_accelerator, get_whisper_accelerator, set_ort_accelerator, set_whisper_accelerator,
-    OrtAccelerator, WhisperAccelerator,
+    get_ort_accelerator, get_whisper_accelerator, get_whisper_gpu_device, set_ort_accelerator,
+    set_whisper_accelerator, set_whisper_gpu_device, OrtAccelerator, WhisperAccelerator,
+    GPU_DEVICE_AUTO,
 };
 pub use error::TranscribeError;
 
@@ -100,6 +102,9 @@ pub mod decode;
 pub mod features;
 #[cfg(feature = "onnx")]
 pub mod onnx;
+
+pub mod transcriber;
+pub mod vad;
 
 #[cfg(feature = "whisper-cpp")]
 pub mod whisper_cpp;
@@ -173,7 +178,7 @@ pub trait SpeechModel: Send {
 ///
 /// Contains both the full transcribed text and detailed timing information
 /// for individual segments within the audio.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TranscriptionResult {
     /// The complete transcribed text from the audio
     pub text: String,
@@ -185,7 +190,7 @@ pub struct TranscriptionResult {
 ///
 /// Represents a portion of the transcribed audio with start and end timestamps
 /// and the corresponding text content.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TranscriptionSegment {
     /// Start time of the segment in seconds
     pub start: f32,
