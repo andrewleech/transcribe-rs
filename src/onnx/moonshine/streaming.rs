@@ -293,6 +293,7 @@ impl StreamingModel {
                 Quantization::FP32 => None,
                 Quantization::FP16 => Some("fp16"),
                 Quantization::Int8 => Some("int8"),
+                Quantization::Int4 => Some("int4"),
             };
 
             let candidates: Vec<std::path::PathBuf> = if let Some(suffix) = suffix {
@@ -794,7 +795,7 @@ impl SpeechModel for StreamingModel {
         STREAMING_CAPABILITIES
     }
 
-    fn transcribe(
+    fn transcribe_raw(
         &mut self,
         samples: &[f32],
         _options: &TranscribeOptions,

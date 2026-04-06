@@ -1,10 +1,14 @@
-use ort::execution_providers::CPUExecutionProvider;
-#[cfg(feature = "ort-cuda")]
-use ort::execution_providers::CUDAExecutionProvider;
+#[cfg(feature = "ort-coreml")]
+use ort::ep::CoreML;
 #[cfg(feature = "ort-directml")]
-use ort::execution_providers::DirectMLExecutionProvider;
+use ort::ep::DirectML;
 #[cfg(feature = "ort-rocm")]
-use ort::execution_providers::ROCmExecutionProvider;
+use ort::ep::ROCm;
+#[cfg(feature = "ort-webgpu")]
+use ort::ep::WebGPU;
+use ort::ep::CPU;
+#[cfg(feature = "ort-cuda")]
+use ort::ep::CUDA;
 
 use ort::session::builder::GraphOptimizationLevel;
 use ort::session::Session;
@@ -13,7 +17,7 @@ use std::path::Path;
 use crate::accel::{get_ort_accelerator, OrtAccelerator};
 
 /// Build the execution provider list based on the global accelerator preference.
-fn execution_providers() -> Vec<ort::execution_providers::ExecutionProviderDispatch> {
+fn execution_providers() -> Vec<ort::ep::ExecutionProviderDispatch> {
     let pref = get_ort_accelerator();
     let mut eps = Vec::new();
 
@@ -23,7 +27,7 @@ fn execution_providers() -> Vec<ort::execution_providers::ExecutionProviderDispa
         }
         OrtAccelerator::Cuda => {
             #[cfg(feature = "ort-cuda")]
-            eps.push(CUDAExecutionProvider::default().build());
+            eps.push(CUDA::default().build());
             #[cfg(not(feature = "ort-cuda"))]
             log::warn!(
                 "Accelerator set to CUDA but ort-cuda feature is not enabled; falling back to CPU"
@@ -31,39 +35,65 @@ fn execution_providers() -> Vec<ort::execution_providers::ExecutionProviderDispa
         }
         OrtAccelerator::DirectMl => {
             #[cfg(feature = "ort-directml")]
-            eps.push(DirectMLExecutionProvider::default().build());
+            eps.push(DirectML::default().build());
             #[cfg(not(feature = "ort-directml"))]
             log::warn!("Accelerator set to DirectML but ort-directml feature is not enabled; falling back to CPU");
         }
         OrtAccelerator::Rocm => {
             #[cfg(feature = "ort-rocm")]
-            eps.push(ROCmExecutionProvider::default().build());
+            eps.push(ROCm::default().build());
             #[cfg(not(feature = "ort-rocm"))]
             log::warn!(
                 "Accelerator set to ROCm but ort-rocm feature is not enabled; falling back to CPU"
             );
         }
+        OrtAccelerator::CoreMl => {
+            #[cfg(feature = "ort-coreml")]
+            eps.push(CoreML::default().build());
+            #[cfg(not(feature = "ort-coreml"))]
+            log::warn!(
+                "Accelerator set to CoreML but ort-coreml feature is not enabled; falling back to CPU"
+            );
+        }
+        OrtAccelerator::WebGpu => {
+            #[cfg(feature = "ort-webgpu")]
+            eps.push(WebGPU::default().build());
+            #[cfg(not(feature = "ort-webgpu"))]
+            log::warn!(
+                "Accelerator set to WebGPU but ort-webgpu feature is not enabled; falling back to CPU"
+            );
+        }
         OrtAccelerator::Auto => {
             // Add compiled-in GPU EPs in priority order.
-            // DirectML is excluded from Auto because it requires
+            // DirectML and WebGPU are excluded from Auto because they require
             // parallel_execution(false) and memory_pattern(false),
-            // which would penalize other backends. Use
-            // OrtAccelerator::DirectMl explicitly for DirectML.
+            // which would penalize other backends. Use the explicit variant
+            // to opt in.
+            // Ref: https://onnxruntime.ai/docs/execution-providers/DirectML-ExecutionProvider.html
+            //      https://onnxruntime.ai/docs/execution-providers/WebGPU-ExecutionProvider.html
             #[cfg(feature = "ort-cuda")]
-            eps.push(CUDAExecutionProvider::default().build());
+            eps.push(CUDA::default().build());
             #[cfg(feature = "ort-rocm")]
-            eps.push(ROCmExecutionProvider::default().build());
+            eps.push(ROCm::default().build());
+            // CoreML is safe for Auto on macOS — analogous to CUDA on NVIDIA
+            // and ROCm on AMD. It does not require sequential execution or
+            // disabled memory patterns.
+            #[cfg(feature = "ort-coreml")]
+            eps.push(CoreML::default().build());
         }
     }
 
     // CPU is always the final fallback
-    eps.push(CPUExecutionProvider::default().build());
+    eps.push(CPU::default().build());
     eps
 }
 
-/// Returns true if DirectML is the explicitly selected execution provider.
-fn directml_active() -> bool {
-    get_ort_accelerator() == OrtAccelerator::DirectMl && cfg!(feature = "ort-directml")
+/// Returns true if the selected execution provider requires sequential execution
+/// and disabled memory patterns (DirectML, WebGPU).
+fn requires_sequential_session() -> bool {
+    let pref = get_ort_accelerator();
+    (pref == OrtAccelerator::DirectMl && cfg!(feature = "ort-directml"))
+        || (pref == OrtAccelerator::WebGpu && cfg!(feature = "ort-webgpu"))
 }
 
 /// Internal session builder with full control over threading and EP selection.
@@ -81,8 +111,8 @@ fn build_session(
         }
     }
 
-    // DirectML requires parallel_execution(false) and memory_pattern(false)
-    let use_parallel = if directml_active() {
+    // DirectML and WebGPU require parallel_execution(false) and memory_pattern(false)
+    let use_parallel = if requires_sequential_session() {
         false
     } else {
         parallel_execution
@@ -90,7 +120,7 @@ fn build_session(
 
     builder = builder.with_parallel_execution(use_parallel)?;
 
-    if directml_active() {
+    if requires_sequential_session() {
         builder = builder.with_memory_pattern(false)?;
     }
 
@@ -139,6 +169,7 @@ pub fn resolve_model_path(
         super::Quantization::FP32 => None,
         super::Quantization::FP16 => Some("fp16"),
         super::Quantization::Int8 => Some("int8"),
+        super::Quantization::Int4 => Some("int4"),
     };
 
     if let Some(suffix) = suffix {
@@ -147,12 +178,7 @@ pub fn resolve_model_path(
             log::info!("Loading {} model: {}", suffix, path.display());
             return path;
         }
-        log::warn!(
-            "{} model not found at {}, falling back to {}.onnx",
-            suffix,
-            path.display(),
-            name
-        );
+        log::info!("No {} variant for {}, using {}.onnx", suffix, name, name);
     }
 
     dir.join(format!("{}.onnx", name))
@@ -202,4 +228,62 @@ pub fn read_metadata_float_vec(
         }
         None => Ok(None),
     }
+}
+
+/// Session for autoregressive decoders: sequential execution, configurable
+/// intra-op threads.
+///
+/// By default forces CPU-only with arena allocator — sequential execution makes
+/// GPU kernel launch overhead net-negative for per-token latency at batch size 1.
+///
+/// Call [`crate::set_decoder_gpu(true)`] to use the global accelerator preference
+/// for decoder sessions (for GPU benchmarking).
+///
+/// Thread count resolution:
+/// 1. `num_threads` if > 0
+/// 2. Global `set_ort_intra_threads` if > 0
+/// 3. ORT default (all cores)
+pub fn create_decoder_session(path: &Path, num_threads: usize) -> Result<Session, ort::Error> {
+    let use_gpu = crate::accel::get_decoder_gpu();
+
+    let mut builder = Session::builder()?
+        .with_optimization_level(GraphOptimizationLevel::Level3)?
+        .with_parallel_execution(false)?;
+    if num_threads > 0 {
+        builder = builder.with_intra_threads(num_threads)?;
+    }
+
+    let session = if use_gpu {
+        log::info!("Decoder session using global accelerator (TRANSCRIBE_DECODER_GPU=1)");
+        builder
+            .with_execution_providers(execution_providers())?
+            .commit_from_file(path)?
+    } else {
+        if get_ort_accelerator() != OrtAccelerator::CpuOnly {
+            log::info!(
+                "Decoder session uses CPU-only (sequential execution); \
+                 set TRANSCRIBE_DECODER_GPU=1 to override"
+            );
+        }
+        builder
+            .with_execution_providers([CPU::default().with_arena_allocator(true).build()])?
+            .commit_from_file(path)?
+    };
+
+    for input in session.inputs() {
+        log::info!(
+            "Model input: name={}, type={:?}",
+            input.name(),
+            input.dtype()
+        );
+    }
+    for output in session.outputs() {
+        log::info!(
+            "Model output: name={}, type={:?}",
+            output.name(),
+            output.dtype()
+        );
+    }
+
+    Ok(session)
 }

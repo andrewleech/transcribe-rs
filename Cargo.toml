@@ -1,6 +1,7 @@
 [package]
 name = "transcribe-rs"
-version = "0.3.2"
+version = "0.3.5"
+build = "build.rs"
 edition = "2021"
 description = "A simple library to help you transcribe audio"
 license = "MIT"
@@ -16,7 +17,7 @@ audio-features = ["dep:ndarray", "dep:rustfft"]
 onnx = ["audio-features", "dep:ort", "dep:base64", "dep:regex", "dep:once_cell"]
 
 # Whisper via whisper.cpp (CPU-only by default; add whisper-metal, whisper-vulkan, or whisper-cuda for GPU)
-whisper-cpp = ["dep:whisper-rs"]
+whisper-cpp = ["dep:whisper-rs", "whisper-rs/raw-api"]
 
 # --- Whisper Accelerators ---
 whisper-metal  = ["whisper-cpp", "whisper-rs/metal"]
@@ -26,17 +27,27 @@ whisper-cuda   = ["whisper-cpp", "whisper-rs/cuda"]
 # Whisperfile server
 whisperfile = ["dep:ureq"]
 
+# Qwen3-ASR (ONNX, Whisper-compatible mel)
+qwen3 = ["onnx"]
+
 # Remote engines
 openai = ["dep:async-openai", "dep:tokio", "dep:async-trait"]
 
+# Silero neural VAD (requires silero_vad_v4.onnx model file)
+vad-silero = ["dep:ort", "dep:ndarray"]
+
 # --- ORT Accelerators ---
+# Note: ort-cuda pulls in the CUDA execution provider, which adds ~800 MB+
+# to the ORT binary and requires a CUDA toolkit / cuDNN installation at runtime.
 ort-cuda     = ["onnx", "ort/cuda"]
 ort-directml = ["onnx", "ort/directml"]
 ort-rocm     = ["onnx", "ort/rocm"]
-ort-accel    = ["ort-cuda", "ort-directml", "ort-rocm"]
+ort-coreml   = ["onnx", "ort/coreml"]
+ort-webgpu   = ["onnx", "ort/webgpu"]
+ort-accel    = ["ort-cuda", "ort-directml", "ort-rocm", "ort-coreml", "ort-webgpu"]
 
 # Convenience
-all = ["onnx", "whisper-cpp", "whisperfile", "openai"]
+all = ["onnx", "whisper-cpp", "whisperfile", "openai", "qwen3"]
 
 [dependencies]
 # Always required
@@ -107,6 +118,14 @@ required-features = ["whisperfile"]
 name = "openai"
 required-features = ["openai"]
 
+[[example]]
+name = "qwen3"
+required-features = ["qwen3"]
+
+[[example]]
+name = "bench_compare"
+required-features = ["qwen3"]
+
 [dev-dependencies]
 once_cell = "1.21.3"
 
@@ -140,5 +159,17 @@ name = "whisperfile"
 required-features = ["whisperfile"]
 
 [[test]]
+name = "qwen3"
+required-features = ["qwen3"]
+
+[[test]]
 name = "openai"
 required-features = ["openai"]
+
+[[test]]
+name = "transcriber"
+required-features = ["onnx", "vad-silero"]
+
+[[test]]
+name = "vad_silero"
+required-features = ["vad-silero"]
